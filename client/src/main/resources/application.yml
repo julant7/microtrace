@@ -1,0 +1,15 @@
+\]server:
+  port: 5050
+grpc:
+  client:
+    loglens:
+      address: static://localhost:7000
+      negotiation-type: plaintext
+spring:
+  application:
+    name: client
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: 2908

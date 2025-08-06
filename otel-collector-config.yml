@@ -1,0 +1,31 @@
+receivers:
+  oltp:
+    protocols:
+      grpc:
+      http:
+processors:
+  batch:
+    send_batch_max_size: 1000
+    send_batch_size: 100
+    timeout: 10s
+exporters:
+  elasticsearch:
+    endpoints: [https://es01:9200]
+    user: elastic
+    password: ${ELASTIC_PASSWORD}
+    tls:
+      ca_file: /etc/certs/ca/ca.crt
+service:
+  pipelines:
+    traces:
+      receivers: [oltp]
+      processors: [batch]
+      exporters: [elasticsearch, logging]
+    metrics:
+      receivers: [oltp]
+      processors: [batch]
+      exporters: [elasticsearch, logging]
+    logs:
+      receivers: [oltp]
+      processors: [batch]
+      exporters: [elasticsearch, logging]
