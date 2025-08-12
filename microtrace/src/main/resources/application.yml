@@ -1,0 +1,11 @@
+server:
+  port: 9878
+spring:
+  application:
+    name: microtrace
+  elasticsearch:
+    uris: https://system.neon0404.space
+    path-prefix: elastic
+    username: elastic
+    password: rOtwZLuD91ixVbwD
+    connection-timeout: 1s

@@ -1,4 +1,4 @@
-\]server:
+server:
   port: 5050
 grpc:
   client:

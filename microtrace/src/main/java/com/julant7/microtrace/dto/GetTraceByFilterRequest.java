@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 @Getter
-public class GetTraceRequest {
+public class GetTraceByFilterRequest {
     @JsonProperty("service")
     private String service;
 
