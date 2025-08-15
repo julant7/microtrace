@@ -9,3 +9,10 @@ spring:
     username: elastic
     password: rOtwZLuD91ixVbwD
     connection-timeout: 1s
+
+logging:
+  level:
+    org:
+      springframework:
+        boot:
+          autoconfigure: ERROR

@@ -5,14 +5,15 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import co.elastic.clients.json.JsonData;
 import com.julant7.microtrace.dto.GetSpansInTraceRequestDto;
-import com.julant7.microtrace.dto.GetSpansResponseDto;
 import com.julant7.microtrace.dto.GetTraceByFilterRequest;
-import com.julant7.microtrace.dto.GetTraceIdsResponseDto;
+import com.julant7.microtrace.dto.OperationOperator;
+import com.julant7.microtrace.dto.ServiceOperator;
+import com.julant7.microtrace.model.Span;
 import com.julant7.microtrace.dto.GetTraceResponseDto;
 import com.julant7.microtrace.dto.ServiceBucket;
 import com.julant7.microtrace.dto.TraceBucket;
-import com.julant7.microtrace.model.Span;
 import lombok.AllArgsConstructor;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
@@ -27,6 +28,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static com.julant7.microtrace.dto.TimeInterval.MINUTES_5;
 
 @AllArgsConstructor
 @Service
@@ -35,14 +39,17 @@ public class TraceSearchService {
 
     public GetTraceResponseDto findTracesByFilters(GetTraceByFilterRequest request) {
         List<FieldValue> traceIds = getTraceIdsByFilters(request);
-        SearchHits<GetTraceIdsResponseDto> searchHits = getGraphs(traceIds);
+        SearchHits<Span> searchHits = getGraphs(traceIds, request);
         return toDto(searchHits);
     }
 
     private List<FieldValue> getTraceIdsByFilters(GetTraceByFilterRequest request) {
         NativeQueryBuilder queryBuilder = NativeQuery.builder();
         queryBuilder.withFields("trace.id");
-        if (request.getTimeIntervals() != null) {
+        System.out.println(request.getTimeInterval() != null);
+
+        if (request.getTimeInterval() != null) {
+            System.out.println(request.getTimeInterval() == MINUTES_5);
             Instant now = Instant.now();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
             queryBuilder.withFilter(q -> q
@@ -50,7 +57,7 @@ public class TraceSearchService {
                             .date(v -> {
                                 v.field("@timestamp")
                                         .lte(formatter.format(now));
-                                switch (request.getTimeIntervals()) {
+                                switch (request.getTimeInterval()) {
                                     case MINUTES_5  -> v.gte(formatter.format(now.minus(5, ChronoUnit.MINUTES)));
                                     case MINUTES_15 -> v.gte(formatter.format(now.minus(15, ChronoUnit.MINUTES)));
                                     case HOURS_1 -> v.gte(formatter.format(now.minus(1, ChronoUnit.HOURS)));
@@ -63,54 +70,51 @@ public class TraceSearchService {
                                 return v;
                             })));
         }
-        if (request.getService() != null) {
-            queryBuilder.withFilter(q -> q
-                    .match(t -> t
-                            .field("service")
-                            .query(request.getService())));
+        if (request.getServices() != null) {
+            List<FieldValue> fieldValues = new ArrayList<>();
+            request.getServices().forEach(f -> fieldValues.add(FieldValue.of(f)));
+            if (request.getServiceOperator() == ServiceOperator.OR) {
+                queryBuilder.withQuery(q -> q
+                        .bool(b -> b
+                                .must(m -> m
+                                        .terms(t -> t
+                                                .field("service")
+                                                .terms(te -> te
+                                                        .value(fieldValues))))));
+            }
         }
-        if (request.getServiceClass() != null) {
-            queryBuilder.withFilter(q -> q
-                    .match(t -> t
-                            .field("scope.name")
-                            .query(request.getServiceClass())));
-        }
-        if (request.getMessage() != null) {
-            queryBuilder.withFilter(q -> q
-                    .match(t -> t
-                            .field("message")
-                            .query(request.getMessage())));
-        }
-        if (request.getMinDuration() != null || request.getMaxDuration() != null) {
-            queryBuilder.withFilter(q -> q
-                    .range(t -> t
-                            .term(v -> {
-                                v.field("duration");
-                                if (request.getMinDuration() == null) v.lte(request.getMaxDuration());
-                                else if (request.getMaxDuration() == null) v.gte(request.getMinDuration());
-                                else {
-                                    v.lte(request.getMaxDuration());
-                                    v.gte(request.getMinDuration());
-                                }
-                                return v;
-                            })));
+        if (request.getOperation() != null) {
+            List<FieldValue> fieldValues = new ArrayList<>();
+            request.getOperation().forEach(f -> fieldValues.add(FieldValue.of(f)));
+            if (request.getOperationOperator() == OperationOperator.OR) {
+                queryBuilder.withQuery(q -> q
+                        .bool(b -> b
+                                .must(m -> m
+                                        .terms(t -> t
+                                                .field("service")
+                                                .terms(te -> te
+                                                        .value(fieldValues))))));
+            }
         }
         NativeQuery query = queryBuilder.build();
-        SearchHits<GetTraceIdsResponseDto> searchHits = elasticsearchOperations.search(query, GetTraceIdsResponseDto.class);
-        List<String> ans = searchHits.stream()
+        SearchHits<Span> searchHits = elasticsearchOperations.search(query, Span.class);
+
+        System.out.println(searchHits.stream()
                 .map(SearchHit::getContent)
-                .map(GetTraceIdsResponseDto::getTraceId)
-                .toList();
-        System.out.println(ans);
+                .map(Span::getTraceId)
+                .distinct()
+                .toList());
         return searchHits.stream()
                 .map(SearchHit::getContent)
+                .map(Span::getTraceId)
                 .map(FieldValue::of)
                 .distinct()
                 .toList();
     }
 
-    private SearchHits<GetTraceIdsResponseDto> getGraphs(List<FieldValue> traceIds) {
+    private SearchHits<Span> getGraphs(List<FieldValue> traceIds, GetTraceByFilterRequest request) {
         NativeQueryBuilder queryBuilder = NativeQuery.builder();
+        // filter inside aggregation
         queryBuilder.withQuery(q -> q
                 .bool(b -> b
                         .must(m -> m
@@ -120,9 +124,8 @@ public class TraceSearchService {
                                                 .value(traceIds))))));
 
         Aggregation aggByService = Aggregation.of(a -> a
-                .terms(ta -> ta.field("service"))
-                .aggregations("sumDurationByService", Aggregation.of(sa -> sa.sum(s -> s.field("duration"))))
-                .aggregations("countInService", Aggregation.of(cs -> cs.valueCount(s -> s.field("service")))));
+                .terms(ta -> ta.field("service.name"))
+                .aggregations("sumDurationByService", Aggregation.of(sa -> sa.sum(s -> s.field("duration")))));
 
         Aggregation aggByTrace = Aggregation.of(a -> a
                 .terms(ta -> ta.field("trace.id"))
@@ -134,16 +137,31 @@ public class TraceSearchService {
                                 .sort(s -> s.field(f -> f.field("@timestamp").order(SortOrder.Asc)))
                                 .source(fn -> fn.filter(f -> f.includes("name")))
                         )))
-                .aggregations("byService", aggByService));
+                .aggregations("byService", aggByService)
+                .aggregations("filterByTraceDuration", agg -> agg
+                        .bucketSelector(bs -> bs
+                                .bucketsPath(bp -> bp
+                                        .dict(Map.of("calculatedDuration", "sumDurationByTrace.value")))
+                                .script(sc -> {
+                                    StringBuilder scriptSource = new StringBuilder();
+                                    if (request.getMaxDuration() != null) {
+                                        scriptSource.append("params.calculatedDuration <= ").append(request.getMaxDuration());
+                                    }
+                                    if (request.getMinDuration() != null) {
+                                        if (request.getMaxDuration() != null) scriptSource.append(" && ");
+                                        scriptSource.append("params.calculatedDuration >= ").append(request.getMinDuration());
+                                    }
+                                    sc.source(scriptSource.isEmpty() ? "true" : scriptSource.toString());
+                                    return sc;
+                                })
+                        )));
         queryBuilder.withAggregation("byTrace", aggByTrace);
-
-        //queryBuilder.withSort(s -> s.field(FieldSort.of(f -> f.field("byService"))));
         NativeQuery query = queryBuilder.build();
-        SearchHits<GetTraceIdsResponseDto> searchHits = elasticsearchOperations.search(query, GetTraceIdsResponseDto.class);
+        SearchHits<Span> searchHits = elasticsearchOperations.search(query, Span.class);
         return searchHits;
     }
 
-    private GetTraceResponseDto toDto(SearchHits<GetTraceIdsResponseDto> searchHits) {
+    private GetTraceResponseDto toDto(SearchHits<Span> searchHits) {
         ElasticsearchAggregations aggregations = (ElasticsearchAggregations) searchHits.getAggregations();
         assert aggregations != null;
         List<StringTermsBucket> traces = aggregations
@@ -162,15 +180,17 @@ public class TraceSearchService {
                 serviceBuckets.add(new ServiceBucket(
                         serviceTermsBucket.key().stringValue(),
                         serviceTermsBucket.aggregations().get("sumDurationByService").sum().value(),
-                        serviceTermsBucket.aggregations().get("countInService").valueCount().value()
+                        serviceTermsBucket.docCount()
                         ))
                 ;
             });
+            JsonData jsonData = (JsonData) traceTermsBucket.aggregations().get("startName").topHits().hits().hits().get(0).source();
+            // jsonData.
             result.add(new TraceBucket(
                     traceTermsBucket.key().stringValue(),
                     traceTermsBucket.aggregations().get("sumDurationByTrace").sum().value(),
-                    traceTermsBucket.aggregations().get("startName").topHits().hits().hits().get(0).toString(),
-                    traceTermsBucket.aggregations().get("minTimestamp").min().value(),
+                    traceTermsBucket.aggregations().get("startName").topHits().hits().hits().get(0).source().toJson().asJsonObject().getString("name"),
+                    traceTermsBucket.aggregations().get("minTimestamp").min().valueAsString(),
                     serviceBuckets
                     )
             );

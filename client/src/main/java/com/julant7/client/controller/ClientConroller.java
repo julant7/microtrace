@@ -1,7 +1,6 @@
 package com.julant7.client.controller;
 
 import com.julant7.client.dto.InsertLogRequestDto;
-import com.julant7.client.service.ClientService;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,8 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @AllArgsConstructor
 public class ClientConroller {
-    ClientService clientService;
-
     @PostMapping("/")
     ResponseEntity<?> insertLog(@RequestBody InsertLogRequestDto insertLogRequestDto) {
         log.warn("HELLOOO");

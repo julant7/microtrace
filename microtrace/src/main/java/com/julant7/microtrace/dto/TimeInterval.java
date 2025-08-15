@@ -1,6 +1,6 @@
 package com.julant7.microtrace.dto;
 
-public enum TimeIntervals {
+public enum TimeInterval {
     MINUTES_5,
     MINUTES_15,
     HOURS_1,

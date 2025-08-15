@@ -1,11 +1,5 @@
 package com.julant7.microtrace.repository;
 
-import com.julant7.microtrace.model.Span;
-import org.springframework.data.elasticsearch.annotations.Query;
-import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 public interface TraceRepository {}
 //@Repository
 //public interface TraceRepository extends ElasticsearchRepository<Span, String> {
