@@ -29,7 +29,7 @@ public class Span {
     private String timestamp;
 
     @Field(name = "duration")
-    private Integer duration;
+    private Long duration;
 
     @Field(name = "service.name")
     private String service;

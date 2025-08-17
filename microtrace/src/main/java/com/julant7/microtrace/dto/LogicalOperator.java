@@ -1,6 +1,6 @@
 package com.julant7.microtrace.dto;
 
-public enum OperationOperator {
+public enum LogicalOperator {
     OR,
     AND,
 }

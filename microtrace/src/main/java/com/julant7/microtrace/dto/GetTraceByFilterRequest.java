@@ -27,7 +27,7 @@ public class GetTraceByFilterRequest {
 
     @Schema(description = "Логический оператор связи операций", accessMode = Schema.AccessMode.READ_ONLY)
     @JsonProperty("operation_operator")
-    private OperationOperator operationOperator;
+    private LogicalOperator logicalOperator;
 
     @Schema(description = "Временной интервал поиска", accessMode = Schema.AccessMode.READ_ONLY)
     @JsonProperty("time_interval")

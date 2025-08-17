@@ -3,6 +3,7 @@ package com.julant7.microtrace.controller;
 import com.julant7.microtrace.dto.GetSpansInTraceRequestDto;
 import com.julant7.microtrace.dto.GetTraceByFilterRequest;
 import com.julant7.microtrace.dto.GetTraceResponseDto;
+import com.julant7.microtrace.dto.TraceSearchRequestDto;
 import com.julant7.microtrace.model.Span;
 import com.julant7.microtrace.service.TraceSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,8 +27,8 @@ public class TraceController {
            summary = "Получение трейсов по фильтрам"
     )
     ResponseEntity<GetTraceResponseDto> getTracesByFilters(
-            @RequestBody @Parameter(description = "DTO", required = true, example = "") GetTraceByFilterRequest getTraceByFilterRequest) {
-        return ResponseEntity.ok(traceSearchService.findTracesByFilters(getTraceByFilterRequest));
+            @RequestBody @Parameter(description = "DTO", required = true, example = "") TraceSearchRequestDto requestDto) {
+        return ResponseEntity.ok(traceSearchService.findTracesByFilters(requestDto));
     }
 
     @GetMapping("/get_spans_in_trace")
