@@ -13,7 +13,7 @@ public enum Field {
     HTTP_STATUS_CODE("http.status_code", FieldType.KEYWORD),
     STATUS_CODE("status.code", FieldType.KEYWORD);
     private final String elasticsearchFieldName;
-    private final FieldType fieldType;
+    private final FieldType type;
     public enum FieldType{
         KEYWORD,
         TEXT,

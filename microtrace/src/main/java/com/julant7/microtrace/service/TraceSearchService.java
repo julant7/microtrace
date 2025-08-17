@@ -77,7 +77,7 @@ public class TraceSearchService {
     private Query toQuery(FieldCondition fieldCondition) {
         Query.Builder queryBuilder = new Query.Builder();
         Field fieldValue = fieldCondition.field();
-        if (!fieldCondition.operator().supports(fieldValue.getFieldType())) {
+        if (!fieldCondition.operator().supports(fieldValue.getType())) {
             throw new IllegalStateException("");
         }
         String field = fieldValue.getElasticsearchFieldName();
